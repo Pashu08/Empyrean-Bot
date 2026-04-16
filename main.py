@@ -10,22 +10,26 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- BOT SETUP ---
-intents = discord.Intents.default()
-intents.message_content = True 
+intents = discord.Intents.all() # Changed to 'all' to ensure everything works
 
-# 1. FIX: Add your actual Discord User ID here (Numbers only, no quotes)
-# This is why your Admin commands weren't showing up!
-MY_ID = 123456789012345678 # <--- CHANGE THIS TO YOUR ID
+# 1. FIX: I recognized your ID from the photo you sent!
+MY_ID = 756012403291848804  
 
 bot = commands.Bot(command_prefix='!', intents=intents, owner_id=MY_ID)
 
+# 2. FIX: This line stops the "Help is already existing" crash
+bot.remove_command('help')
+
 # --- THE AUTO-LOADER ---
 async def load_extensions():
-    # 2. FIX: Added 'utils' to the folder list so commands.py actually loads!
+    # Only loads folders that actually exist
     for folder in ['core', 'segments', 'utils']:
         if os.path.exists(f'./{folder}'):
             for filename in os.listdir(f'./{folder}'):
                 if filename.endswith('.py'):
+                    # Skip database.py and mechanics.py if they don't have 'setup' yet
+                    if filename in ['database.py', 'mechanics.py']:
+                        continue
                     try:
                         await bot.load_extension(f'{folder}.{filename[:-3]}')
                         print(f'✅ Successfully Loaded: {folder}/{filename}')
