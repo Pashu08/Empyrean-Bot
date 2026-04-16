@@ -10,39 +10,37 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- BOT SETUP ---
-intents = discord.Intents.all() # Changed to 'all' to ensure everything works
-
-# 1. FIX: I recognized your ID from the photo you sent!
+intents = discord.Intents.all()
 MY_ID = 756012403291848804  
 
 bot = commands.Bot(command_prefix='!', intents=intents, owner_id=MY_ID)
-
-# 2. FIX: This line stops the "Help is already existing" crash
 bot.remove_command('help')
 
 # --- THE AUTO-LOADER ---
 async def load_extensions():
-    # Only loads folders that actually exist
+    # We load everything in these folders
     for folder in ['core', 'segments', 'utils']:
         if os.path.exists(f'./{folder}'):
             for filename in os.listdir(f'./{folder}'):
                 if filename.endswith('.py'):
-                    # Skip database.py and mechanics.py if they don't have 'setup' yet
-                    if filename in ['database.py', 'mechanics.py']:
+                    # We ONLY skip mechanics.py for now. 
+                    # We MUST load database.py so the commands can use it!
+                    if filename in ['mechanics.py']:
                         continue
+                        
                     try:
                         await bot.load_extension(f'{folder}.{filename[:-3]}')
                         print(f'✅ Successfully Loaded: {folder}/{filename}')
                     except Exception:
-                        print(f'❌ CRITICAL ERROR LOADING {filename}:')
+                        print(f'❌ ERROR LOADING {filename}:')
                         traceback.print_exc()
 
 @bot.event
 async def on_ready():
+    # This creates your 'cultivation.db' file if it doesn't exist
     init_db()
-    print(f'--- {bot.user.name} IS NOW ONLINE (Professional Build) ---')
-    print(f'Logged in as: {bot.user.name} (ID: {bot.user.id})')
-    print(f'Elder Authority recognized for ID: {bot.owner_id}')
+    print(f'--- {bot.user.name} IS NOW ONLINE ---')
+    print(f'Elder Authority recognized for: {bot.owner_id}')
     print('----------------------------------------------------')
 
 # --- ENGINE START ---
@@ -59,4 +57,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n--- BOT SHUTDOWN (Manual) ---")
+        print("\n--- BOT SHUTDOWN ---")
