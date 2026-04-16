@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import asyncio
-import traceback  # <--- Essential for seeing the actual bugs
+import traceback
 from utils.database import init_db
 from dotenv import load_dotenv
 
@@ -12,21 +12,24 @@ load_dotenv()
 # --- BOT SETUP ---
 intents = discord.Intents.default()
 intents.message_content = True 
-bot = commands.Bot(command_prefix='!', intents=intents)
+
+# 1. FIX: Add your actual Discord User ID here (Numbers only, no quotes)
+# This is why your Admin commands weren't showing up!
+MY_ID = 123456789012345678 # <--- CHANGE THIS TO YOUR ID
+
+bot = commands.Bot(command_prefix='!', intents=intents, owner_id=MY_ID)
 
 # --- THE AUTO-LOADER ---
 async def load_extensions():
-    # We are loading from CORE (Foundation) and SEGMENTS (Gameplay)
-    for folder in ['core', 'segments']:
+    # 2. FIX: Added 'utils' to the folder list so commands.py actually loads!
+    for folder in ['core', 'segments', 'utils']:
         if os.path.exists(f'./{folder}'):
             for filename in os.listdir(f'./{folder}'):
                 if filename.endswith('.py'):
                     try:
-                        # Clear old versions from memory and load fresh
                         await bot.load_extension(f'{folder}.{filename[:-3]}')
                         print(f'✅ Successfully Loaded: {folder}/{filename}')
                     except Exception:
-                        # THIS is what will show you why the bot is glitching
                         print(f'❌ CRITICAL ERROR LOADING {filename}:')
                         traceback.print_exc()
 
@@ -35,6 +38,7 @@ async def on_ready():
     init_db()
     print(f'--- {bot.user.name} IS NOW ONLINE (Professional Build) ---')
     print(f'Logged in as: {bot.user.name} (ID: {bot.user.id})')
+    print(f'Elder Authority recognized for ID: {bot.owner_id}')
     print('----------------------------------------------------')
 
 # --- ENGINE START ---
@@ -52,4 +56,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n--- BOT SHUTDOWN (Manual) ---")
-
