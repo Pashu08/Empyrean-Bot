@@ -7,7 +7,9 @@ class Foundation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # --- THE ENERGY CALCULATOR ---
+    # ==========================================
+    # [ UTILITY: KI REGEN CALCULATOR ]
+    # ==========================================
     def get_refilled_energy(self, current_energy, max_energy, last_time):
         now = int(time.time())
         if last_time == 0: return current_energy, now
@@ -17,8 +19,10 @@ class Foundation(commands.Cog):
             return min(current_energy + regained, max_energy), now
         return current_energy, last_time
 
-    # --- THE AWAKENING (START) ---
-    @commands.command()
+    # ==========================================
+    # [ CORE ACTION: SOUL AWAKENING ]
+    # ==========================================
+    @commands.command(name="start")
     async def start(self, ctx):
         user_id = ctx.author.id
         conn = sqlite3.connect('cultivation.db')
@@ -26,10 +30,14 @@ class Foundation(commands.Cog):
         cursor.execute('SELECT user_id FROM users WHERE user_id = ?', (user_id,))
         
         if cursor.fetchone():
-            await ctx.send("❌ **Your presence is already recorded in the Archive.**")
+            # Cinematic Welcome Back
+            embed = discord.Embed(title="✨ ARCHIVE RECOGNITION", color=0x3498db)
+            embed.description = "The Archive hums as it recognizes your soul. Your foundation is already set, Cultivator."
+            embed.set_footer(text="Seek progress via !p or !temper.")
+            await ctx.send(embed=embed)
         else:
             now = int(time.time())
-            # Initialize user with 50 energy
+            # Initialize user with 50 Ki
             cursor.execute("INSERT INTO users (user_id, last_updated, energy_current) VALUES (?, ?, 50)", (user_id, now))
             conn.commit()
             
@@ -48,11 +56,12 @@ class Foundation(commands.Cog):
             )
             
             embed.set_footer(text="Type !temper to begin your first refinement.")
-            
             await ctx.send(embed=embed)
         conn.close()
 
-    # --- THE PROFILE COMMAND ---
+    # ==========================================
+    # [ CORE ACTION: CULTIVATOR PROFILE ]
+    # ==========================================
     @commands.command(name="p", aliases=['profile'])
     async def profile(self, ctx):
         user_id = ctx.author.id
@@ -73,27 +82,24 @@ class Foundation(commands.Cog):
         conn.commit()
         conn.close()
 
-        # --- THE UPGRADED "SILVER ARCHIVE" STYLE ---
         embed = discord.Embed(
             title="💎 CULTIVATOR STATUS: RECORDED", 
-            color=0xC0C0C0 # Matching Silver
+            color=0xC0C0C0 
         )
         embed.set_thumbnail(url=ctx.author.display_avatar.url)
         
         embed.add_field(name="👤 Identity", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="💠 Foundation", value=f"`{rank}`", inline=True)
-        embed.add_field(name="✨ Progress", value=f"`{prog}%` to Next Rank", inline=False)
+        embed.add_field(name="📈 Progress", value=f"`{prog}%` to Next Rank", inline=False)
         
-        # Professional Energy Bar (Mobile Optimized)
-                # Clean 8-block fix (No spaces)
-        blocks = int((cur_e / max_e) * 8)
-        bar = "🔋" + "🟦" * blocks + "⬜" * (8 - blocks)
+        # --- ULTRA-COMPACT MOBILE KI BAR (6 Blocks) ---
+        # Using 6 blocks and diamond emojis ensures this stays on one line
+        blocks = int((cur_e / max_e) * 6)
+        bar = "🔹" * blocks + "🔸" * (6 - blocks)
         
-        embed.add_field(name="⚡ Qi Reserve", value=f"{bar}\n`{cur_e}/{max_e}`", inline=False)
-
+        embed.add_field(name="⚡ Ki Reserve", value=f"{bar} `{cur_e}/{max_e}`", inline=False)
         
         embed.set_footer(text="The Archive tracks all. Refine your soul.")
-        
         await ctx.send(embed=embed)
 
 async def setup(bot):

@@ -2,11 +2,11 @@ import discord
 from discord.ext import commands
 import os
 import asyncio
+import traceback  # <--- Essential for seeing the actual bugs
 from utils.database import init_db
 from dotenv import load_dotenv
 
 # --- SECRETS SETUP ---
-# This loads the variables from your .env file
 load_dotenv()
 
 # --- BOT SETUP ---
@@ -22,23 +22,34 @@ async def load_extensions():
             for filename in os.listdir(f'./{folder}'):
                 if filename.endswith('.py'):
                     try:
+                        # Clear old versions from memory and load fresh
                         await bot.load_extension(f'{folder}.{filename[:-3]}')
                         print(f'✅ Successfully Loaded: {folder}/{filename}')
-                    except Exception as e:
-                        print(f'❌ Error loading {filename}: {e}')
+                    except Exception:
+                        # THIS is what will show you why the bot is glitching
+                        print(f'❌ CRITICAL ERROR LOADING {filename}:')
+                        traceback.print_exc()
 
 @bot.event
 async def on_ready():
     init_db()
     print(f'--- {bot.user.name} IS NOW ONLINE (Professional Build) ---')
+    print(f'Logged in as: {bot.user.name} (ID: {bot.user.id})')
+    print('----------------------------------------------------')
 
 # --- ENGINE START ---
 async def main():
     async with bot:
         await load_extensions()
-        # This looks for "DISCORD_TOKEN" inside your .env file
         token = os.getenv('DISCORD_TOKEN')
+        if not token:
+            print("❌ ERROR: No DISCORD_TOKEN found in .env file!")
+            return
         await bot.start(token)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n--- BOT SHUTDOWN (Manual) ---")
+
