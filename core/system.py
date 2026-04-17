@@ -13,7 +13,6 @@ class System(commands.Cog):
             color=0x2b2d31
         )
         
-        # --- Public Section ---
         embed.add_field(
             name="⚖️ STATUS & ASSETS", 
             value="• `!start` — Bind Soul\n• `!p` — View Profile\n• `!inv` — Check Wallet", 
@@ -25,7 +24,6 @@ class System(commands.Cog):
             inline=False
         )
 
-        # --- Elder Section (ONLY YOU CAN SEE THIS) ---
         if ctx.author.id == self.bot.owner_id:
             embed.add_field(
                 name="🏮 ELDER AUTHORITY", 
@@ -37,6 +35,18 @@ class System(commands.Cog):
             embed.set_footer(text=f"Disciple {ctx.author.name}, stay focused on your path.")
 
         await ctx.send(embed=embed)
+
+    # --- NEW: COOLDOWN ERROR HANDLER ---
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            seconds = round(error.retry_after, 1)
+            embed = discord.Embed(
+                title="⏳ MEDITATION REQUIRED",
+                description=f"Your meridians are overheated. Rest for **{seconds}s**.",
+                color=0xe74c3c
+            )
+            await ctx.send(embed=embed, delete_after=5)
 
     @commands.command(name="shutdown")
     async def shutdown(self, ctx):

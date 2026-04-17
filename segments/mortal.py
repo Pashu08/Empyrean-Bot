@@ -10,6 +10,7 @@ class MortalAwakening(commands.Cog):
         self.bot = bot
 
     @commands.command(name="temper", aliases=['t'])
+    @commands.cooldown(1, 5, commands.BucketType.user) # <--- Added 5s Cooldown
     async def temper(self, ctx):
         user_id = ctx.author.id
         conn = sqlite3.connect('cultivation.db')
@@ -60,7 +61,7 @@ class MortalAwakening(commands.Cog):
 
     @commands.command(name="encounter", aliases=['e'])
     async def encounter(self, ctx):
-        # ... (rest of your encounter code remains the same)
+        # Your encounter code remains here
         pass
 
 async def setup(bot):
