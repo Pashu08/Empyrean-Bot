@@ -1,60 +1,67 @@
 import discord
 from discord.ext import commands
+import time
 
 class System(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(name="help")
-    async def help(self, ctx):
+    async def help_command(self, ctx):
+        """A visual guide to the Archive's commands."""
         embed = discord.Embed(
-            title="📜 ARCHIVE COMMANDS", 
-            description="*The path to immortality begins with a single command.*",
-            color=0x2b2d31
-        )
-        
-        embed.add_field(
-            name="⚖️ STATUS & ASSETS", 
-            value="• `!start` — Bind Soul\n• `!p` — View Profile\n• `!inv` — Check Wallet", 
-            inline=False
-        )
-        embed.add_field(
-            name="🔥 CULTIVATION", 
-            value="• `!t` — Body Tempering\n• `!e` — World Encounter", 
-            inline=False
+            title="🏮 THE ARCHIVE: COMMAND MANUAL",
+            description="*Navigate your path with precision. Paragraphs are for scholars; action is for cultivators.*",
+            color=0x7f8c8d
         )
 
-        if ctx.author.id == self.bot.owner_id:
-            embed.add_field(
-                name="🏮 ELDER AUTHORITY", 
-                value="• **`!set_stat`** `[user] [stat] [val]`\n• **`!shutdown`** — *Seal the Archive*", 
-                inline=False
+        # Category 1: The Beginning (Mortal)
+        mortal_cmds = (
+            "**!start** - Bind your soul to the Archive.\n"
+            "**!p / !profile** - View your current identity.\n"
+            "**!t / !temper** - Strengthen your mortal shell.\n"
+            "**!breakthrough** - Shatter your limits (100% progress)."
+        )
+        embed.add_field(name="🌱 Mortal Path", value=mortal_cmds, inline=False)
+
+        # Category 2: Wealth & Sects
+        economy_cmds = (
+            "**!bal / !wallet** - Check your Silver and Copper.\n"
+            "**!give [user] [amt] [type]** - Transfer wealth.\n"
+            "**!f_create [name]** - Establish a Family (1,000 Silver)."
+        )
+        embed.add_field(name="💰 Economy & Lineage", value=economy_cmds, inline=False)
+
+        # Category 3: System
+        system_cmds = (
+            "**!help** - Display this manual.\n"
+            "**!ping** - Check Archive latency."
+        )
+        embed.add_field(name="⚙️ System", value=system_cmds, inline=False)
+
+        # Secret Category: Elder (Only shows for Owner)
+        if await self.bot.is_owner(ctx.author):
+            elder_cmds = (
+                "**!add_silver** | **!set_rank**\n"
+                "**!set_talent** | **!set_pillar**\n"
+                "**!refill** | **!shutdown**"
             )
-            embed.set_footer(text="Elder status recognized. Authority active.")
-        else:
-            embed.set_footer(text=f"Disciple {ctx.author.name}, stay focused on your path.")
+            embed.add_field(name="🏮 Elder Authority (Owner Only)", value=elder_cmds, inline=False)
 
+        embed.set_footer(text=f"Requested by {ctx.author.name} • Version 1.0")
         await ctx.send(embed=embed)
 
-    # --- NEW: COOLDOWN ERROR HANDLER ---
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            seconds = round(error.retry_after, 1)
-            embed = discord.Embed(
-                title="⏳ MEDITATION REQUIRED",
-                description=f"Your meridians are overheated. Rest for **{seconds}s**.",
-                color=0xe74c3c
-            )
-            await ctx.send(embed=embed, delete_after=5)
-
-    @commands.command(name="shutdown")
-    async def shutdown(self, ctx):
-        if ctx.author.id != self.bot.owner_id:
-            return await ctx.send("❌ **Your authority is insufficient.**")
+    @commands.command(name="ping")
+    async def ping(self, ctx):
+        """Checks the bot's response time."""
+        start_time = time.time()
+        message = await ctx.send("⌛ *Measuring connection to the Heavens...*")
+        end_time = time.time()
         
-        await ctx.send("🌌 **The Elder has spoken. The Heavens are closing. The Archive is sealed.**")
-        await self.bot.close()
+        latency = round(self.bot.latency * 1000)
+        api_speed = round((end_time - start_time) * 1000)
+        
+        await message.edit(content=f"🏮 **Archive Latency:** `{latency}ms` | **Gate Speed:** `{api_speed}ms`")
 
 async def setup(bot):
     await bot.add_cog(System(bot))
