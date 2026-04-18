@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from utils.database import get_player_data, update_val, adjust_val
+from utils.database import get_player_data, update_val, adjust_val, delete_user # Added delete_user here
 from utils.mechanics import calculate_vessel_limit, TALENTS, CONSTITUTIONS
 
 class ElderAuthority(commands.Cog):
@@ -58,6 +58,23 @@ class ElderAuthority(commands.Cog):
         update_val(target.id, 'energy_current', data['energy_max'])
         update_val(target.id, 'internal_ki', data['vessel_cap'])
         await ctx.send(f"🏮 **ELDER EDIT:** {target.mention} has been fully restored.")
+
+    @commands.command(name="reset_player")
+    async def reset_player(self, ctx, target: discord.Member):
+        """Wipes a player's soul so they can !start again."""
+        data = get_player_data(target.id)
+        if not data:
+            return await ctx.send("❌ This player doesn't exist in the Archive.")
+
+        delete_user(target.id)
+        
+        embed = discord.Embed(
+            title="🏮 ELDER AUTHORITY: SOUL WIPE",
+            description=f"The presence of {target.mention} has been erased from the world.",
+            color=0xff0000
+        )
+        embed.set_footer(text="They are now free to use !start to begin a new life.")
+        await ctx.send(embed=embed)
 
     @commands.command(name="shutdown")
     async def shutdown(self, ctx):

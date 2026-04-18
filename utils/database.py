@@ -34,7 +34,6 @@ def init_db():
     ''')
 
     # 2. AUTO-FIXER LOGIC: Add missing columns if they don't exist
-    # This list contains all the columns we need for the Murim Engine
     required_columns = [
         ('rank', 'TEXT DEFAULT "Mortal"'),
         ('stage', 'TEXT DEFAULT "None"'),
@@ -71,12 +70,12 @@ def init_db():
     conn.commit()
     conn.close()
 
-# --- GETTERS AND SETTERS (The "Vault Manager" Tools) ---
+# --- GETTERS AND SETTERS ---
 
 def get_player_data(user_id):
     """Fetches all data for a specific player."""
     conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row # Allows accessing columns by name
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     result = cursor.fetchone()
@@ -115,5 +114,15 @@ def create_user(user_id, talent, constitution):
         INSERT OR IGNORE INTO users (user_id, talent, constitution) 
         VALUES (?, ?, ?)
     ''', (user_id, talent, constitution))
+    conn.commit()
+    conn.close()
+
+# --- NEW: THE WIPE TOOL ---
+
+def delete_user(user_id):
+    """Completely wipes a user from the database."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
     conn.commit()
     conn.close()
