@@ -8,7 +8,7 @@ class System(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="help", aliases=['h'])
+        @commands.command(name="help", aliases=['h'])
     async def help_command(self, ctx):
         """A dynamic guide that changes based on your rank."""
         user_id = ctx.author.id
@@ -20,13 +20,13 @@ class System(commands.Cog):
             color=0x7f8c8d
         )
 
-        # 1. General Commands (Available to all)
+        # 1. General Commands
         gen_cmds = (
             "**!p / !profile** - View your identity.\n"
             "**!s / !status** - Quick status check.\n"
             "**!mantra [text]** - Set your profile bio.\n"
-            "**!talents** - View Soul-Root rarities.\n"
-            "**!bodies** - View Constitution rarities."
+            "**!talents** - Soul-Root manuals.\n"
+            "**!bodies** - Constitution manuals."
         )
         embed.add_field(name="📜 General Knowledge", value=gen_cmds, inline=False)
 
@@ -34,38 +34,35 @@ class System(commands.Cog):
         if not data or data['rank'] == 'Mortal':
             mortal_cmds = (
                 "**!start** - Bind your soul.\n"
-                "**!t / !temper** - Harden your shell (+Progress).\n"
+                "**!t / !temper** - Harden shell (+Progress).\n"
                 "**!e / !encounter** - Search for scraps.\n"
-                "**!bt / !breakthrough** - Attempt to reach 3rd-rate Warrior."
+                "**!bt / !breakthrough** - Attempt Awakening."
             )
             embed.add_field(name="🌱 Mortal Path", value=mortal_cmds, inline=False)
         else:
             warrior_cmds = (
-                "**!tr / !train** - Build the Body (External Ki).\n"
-                "**!b / !breathe** - Build the Soul (Internal Ki).\n"
-                "**!e / !encounter** - Hunt for wealth and herbs.\n"
-                "**!bt / !breakthrough** - Advance Stages and Realms."
+                "**!tr / !train** - Build Body (External).\n"
+                "**!b / !breathe** - Build Soul (Internal).\n"
+                "**!e / !encounter** - Hunt for wealth.\n"
+                "**!bt / !breakthrough** - Advance Stages."
             )
             embed.add_field(name="⚔️ Warrior Path", value=warrior_cmds, inline=False)
 
-        # 3. Economy (The 500:1 Ratio)
-        econ_cmds = (
-            f"💰 **Rate:** 1 Silver = `{COPPER_TO_SILVER}` Copper\n"
-            "🏰 **Family Cost:** `100 Silver`"
-        )
-        embed.add_field(name="💰 Economy & Lineage", value=econ_cmds, inline=False)
-
-        # 4. Elder Authority (Only for you)
+        # 3. Elder Authority (Showing all commands now)
         if await self.bot.is_owner(ctx.author):
             elder_cmds = (
-                "**!give_money [type] [amt] [user]**\n"
-                "**!pardon [user]** | **!audit [user]**\n"
-                "**!set_mantra_other [user] [text]**"
+                "**!give_money [coin] [amt] [user]** - Grant wealth.\n"
+                "**!set_stats [int/ext] [val] [user]** - Edit Ki stats.\n"
+                "**!pardon [user]** - Heal injuries instantly.\n"
+                "**!audit [user]** - Check secret multipliers.\n"
+                "**!refill [user]** - Full restore Energy/Ki.\n"
+                "**!reset_player [user]** - Wipe character data."
             )
-            embed.add_field(name="🏮 Elder Authority", value=elder_cmds, inline=False)
+            embed.add_field(name="🏮 Elder Authority (Owner Only)", value=elder_cmds, inline=False)
 
         embed.set_footer(text=f"The Archive recognizes {ctx.author.name}")
         await ctx.send(embed=embed)
+
 
     @commands.command(name="talents")
     async def talents_manual(self, ctx):
