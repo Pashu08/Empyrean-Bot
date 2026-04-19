@@ -28,7 +28,7 @@ CONSTITUTIONS = {
 # Hard gates for External and Internal Ki for each breakthrough
 # Format: { 'Major Realm': { 'Next Stage': (Ext Req, Int Req) } }
 REQUIREMENTS = {
-    'Mortal': {'Third-rate Warrior': (0, 1000)}, # Mortal uses 'Progress' as Int Ki
+    'Mortal': {'Third-rate Warrior': (0, 100)}, # Mortal uses 'Progress' as Int Ki
     'Third-rate Warrior': {
         'Middle': (500, 500), 
         'Late': (1200, 1200), 
