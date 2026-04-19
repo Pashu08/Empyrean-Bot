@@ -8,7 +8,7 @@ class System(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-        @commands.command(name="help", aliases=['h'])
+    @commands.command(name="help", aliases=['h'])
     async def help_command(self, ctx):
         """A dynamic guide that changes based on your rank."""
         user_id = ctx.author.id
@@ -48,7 +48,7 @@ class System(commands.Cog):
             )
             embed.add_field(name="⚔️ Warrior Path", value=warrior_cmds, inline=False)
 
-        # 3. Elder Authority (Showing all commands now)
+        # 3. Elder Authority
         if await self.bot.is_owner(ctx.author):
             elder_cmds = (
                 "**!give_money [coin] [amt] [user]** - Grant wealth.\n"
@@ -62,7 +62,6 @@ class System(commands.Cog):
 
         embed.set_footer(text=f"The Archive recognizes {ctx.author.name}")
         await ctx.send(embed=embed)
-
 
     @commands.command(name="talents")
     async def talents_manual(self, ctx):
