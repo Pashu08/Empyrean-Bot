@@ -1,85 +1,92 @@
 import discord
 from discord.ext import commands
-from utils.database import get_player_data, update_val, adjust_val, delete_user # Added delete_user here
-from utils.mechanics import calculate_vessel_limit, TALENTS, CONSTITUTIONS
+from utils.database import get_player_data, update_val, adjust_val, delete_user
+from utils.mechanics import TALENTS, CONSTITUTIONS
 
 class ElderAuthority(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     async def cog_check(self, ctx):
-        """Ensures only the Bot Owner can use these commands."""
+        """Strictly restricts these commands to the High Elder (Owner)."""
         return await self.bot.is_owner(ctx.author)
 
-    @commands.command(name="add_silver")
-    async def add_silver(self, ctx, target: discord.Member, amount: int):
-        adjust_val(target.id, 'silver', amount)
-        await ctx.send(f"🏮 **ELDER EDIT:** Added `{amount}` Silver to {target.mention}.")
+    @commands.command(name="give_money")
+    async def give_money(self, ctx, coin_type: str, amount: int, target: discord.Member):
+        """Usage: !give_money copper 1000 @user"""
+        coin_type = coin_type.lower()
+        if coin_type not in ['copper', 'silver']:
+            return await ctx.send("❌ Choose `copper` or `silver`.")
+        
+        adjust_val(target.id, coin_type, amount)
+        await ctx.send(f"🏮 **ELDER DECREE:** Granted `{amount}` {coin_type.capitalize()} to {target.mention}.")
 
-    @commands.command(name="set_rank")
-    async def set_rank(self, ctx, target: discord.Member, *, rank_name: str):
-        """Usage: !set_rank @user Second-rate Warrior"""
+    @commands.command(name="audit")
+    async def audit(self, ctx, target: discord.Member):
+        """DMs the Elder a detailed report of a player's hidden stats."""
         data = get_player_data(target.id)
-        if not data: return await ctx.send("❌ Target not found.")
+        if not data: return await ctx.send("❌ Player not found.")
 
-        update_val(target.id, 'rank', rank_name)
+        t_mult = TALENTS.get(data['talent'], {}).get('mult', 1.0)
+        c_vmod = CONSTITUTIONS.get(data['constitution'], {}).get('v_mod', 1.0)
+        c_pmod = CONSTITUTIONS.get(data['constitution'], {}).get('p_mod', 1.0)
+
+        report = (
+            f"🏮 **AUDIT REPORT: {target.name}**\n"
+            f"`──────────────────────────────`\n"
+            f"**Rank:** {data['rank']} ({data['stage']})\n"
+            f"**Talent:** {data['talent']} (Gain: `{t_mult}x`)\n"
+            f"**Body:** {data['constitution']} (Vessel: `{c_vmod}x` | Power: `{c_pmod}x`)\n"
+            f"**Internal Ki:** `{data['internal_ki']}` / `{data['vessel_cap']}`\n"
+            f"**External Ki:** `{data['external_ki']}`\n"
+            f"**Mantra:** *{data['mantra']}*\n"
+            f"`──────────────────────────────`"
+        )
         
-        # Auto-update Vessel Cap for the new rank
-        new_vessel = calculate_vessel_limit(data['vessel_cap'], data['constitution'], rank_name)
-        update_val(target.id, 'vessel_cap', new_vessel)
+        try:
+            await ctx.author.send(report)
+            await ctx.send(f"✅ Audit for {target.mention} sent to your DMs.")
+        except:
+            await ctx.send("❌ I couldn't DM you. Please open your DMs.")
 
-        await ctx.send(f"🏮 **ELDER EDIT:** {target.mention} rank set to `{rank_name}`. Vessel adjusted to `{new_vessel}`.")
+    @commands.command(name="pardon")
+    async def pardon(self, ctx, target: discord.Member):
+        """Instantly heals a player from jail or injuries."""
+        update_val(target.id, 'jail_until', 0)
+        await ctx.send(f"🏮 **ELDER MERCY:** {target.mention}'s injuries have been miraculously healed.")
 
-    @commands.command(name="set_talent")
-    async def set_talent(self, ctx, target: discord.Member, *, talent_name: str):
-        if talent_name not in TALENTS:
-            return await ctx.send(f"❌ Invalid Talent. Choose: {', '.join(TALENTS.keys())}")
-        
-        update_val(target.id, 'talent', talent_name)
-        await ctx.send(f"🏮 **ELDER EDIT:** {target.mention} talent set to `{talent_name}`.")
+    @commands.command(name="set_stats")
+    async def set_stats(self, ctx, target: discord.Member, stat_type: str, value: int):
+        """Directly sets Ki values. Usage: !set_stats @user internal 5000"""
+        stat_type = stat_type.lower()
+        column = ""
+        if stat_type == "internal": column = "internal_ki"
+        elif stat_type == "external": column = "external_ki"
+        else: return await ctx.send("❌ Choose `internal` or `external`.")
 
-    @commands.command(name="set_pillar")
-    async def set_pillar(self, ctx, target: discord.Member, pillar: str, value: float):
-        """Usage: !set_pillar @user density 2.5"""
-        pillar = pillar.lower()
-        if pillar not in ['density', 'control']:
-            return await ctx.send("❌ Choose `density` or `control`.")
-        
-        column = 'ki_density' if pillar == 'density' else 'ki_control'
         update_val(target.id, column, value)
-        await ctx.send(f"🏮 **ELDER EDIT:** {target.mention}'s Ki {pillar.capitalize()} set to `{value}`.")
+        await ctx.send(f"🏮 **ELDER EDIT:** {target.mention}'s {stat_type.capitalize()} Ki set to `{value}`.")
+
+    @commands.command(name="set_mantra_other")
+    async def set_mantra_other(self, ctx, target: discord.Member, *, text: str):
+        """Force-updates a player's mantra (for moderation)."""
+        update_val(target.id, 'mantra', text)
+        await ctx.send(f"✅ Mantra for {target.mention} has been reset by Elder Authority.")
 
     @commands.command(name="refill")
     async def refill(self, ctx, target: discord.Member):
-        """Instantly restores Energy and Ki to max."""
+        """Restores Energy and Ki to max instantly."""
         data = get_player_data(target.id)
         if not data: return
-        
         update_val(target.id, 'energy_current', data['energy_max'])
         update_val(target.id, 'internal_ki', data['vessel_cap'])
-        await ctx.send(f"🏮 **ELDER EDIT:** {target.mention} has been fully restored.")
+        await ctx.send(f"🏮 **ELDER RESTORATION:** {target.mention} is now at peak condition.")
 
     @commands.command(name="reset_player")
     async def reset_player(self, ctx, target: discord.Member):
-        """Wipes a player's soul so they can !start again."""
-        data = get_player_data(target.id)
-        if not data:
-            return await ctx.send("❌ This player doesn't exist in the Archive.")
-
+        """Wipes a player so they can !start fresh."""
         delete_user(target.id)
-        
-        embed = discord.Embed(
-            title="🏮 ELDER AUTHORITY: SOUL WIPE",
-            description=f"The presence of {target.mention} has been erased from the world.",
-            color=0xff0000
-        )
-        embed.set_footer(text="They are now free to use !start to begin a new life.")
-        await ctx.send(embed=embed)
-
-    @commands.command(name="shutdown")
-    async def shutdown(self, ctx):
-        await ctx.send("🏮 **The Archive is closing...** (System Shutdown)")
-        await self.bot.close()
+        await ctx.send(f"🏮 **ELDER AUTHORITY:** The soul of {target.mention} has been erased from the Archive.")
 
 async def setup(bot):
     await bot.add_cog(ElderAuthority(bot))

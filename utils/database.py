@@ -3,11 +3,12 @@ import sqlite3
 DB_NAME = 'cultivation.db'
 
 def init_db():
-    """Initializes the database and ensures all columns exist."""
+    """Initializes the database with Whole Number support and new columns."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    # 1. Create the base table if it doesn't exist
+    # 1. Create/Update the base table
+    # Changed REAL to INTEGER for Ki and Energy
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -16,44 +17,33 @@ def init_db():
             progress INTEGER DEFAULT 0,
             silver INTEGER DEFAULT 0,
             copper INTEGER DEFAULT 0,
-            internal_ki REAL DEFAULT 0.0,
-            external_ki REAL DEFAULT 0.0,
-            ki_density REAL DEFAULT 1.0,
-            ki_control REAL DEFAULT 1.0,
+            internal_ki INTEGER DEFAULT 0,
+            external_ki INTEGER DEFAULT 0,
             vessel_cap INTEGER DEFAULT 100,
             talent TEXT DEFAULT 'None',
             constitution TEXT DEFAULT 'None',
-            path TEXT DEFAULT 'None',
-            family_id INTEGER DEFAULT 0,
-            energy_current REAL DEFAULT 100.0,
-            energy_max REAL DEFAULT 100.0,
+            path TEXT DEFAULT 'Neutral',
+            energy_current INTEGER DEFAULT 100,
+            energy_max INTEGER DEFAULT 100,
+            mantra TEXT DEFAULT 'The path to immortality begins with a single step.',
+            last_meditate INTEGER DEFAULT 0,
             last_updated INTEGER DEFAULT 0,
-            jail_until INTEGER DEFAULT 0,
-            faint_count INTEGER DEFAULT 0
+            jail_until INTEGER DEFAULT 0
         )
     ''')
 
-    # 2. AUTO-FIXER LOGIC: Add missing columns if they don't exist
+    # 2. THE AUTO-FIXER: Ensures your current DB gets the new columns
     required_columns = [
-        ('rank', 'TEXT DEFAULT "Mortal"'),
-        ('stage', 'TEXT DEFAULT "None"'),
-        ('progress', 'INTEGER DEFAULT 0'),
-        ('silver', 'INTEGER DEFAULT 0'),
-        ('copper', 'INTEGER DEFAULT 0'),
-        ('internal_ki', 'REAL DEFAULT 0.0'),
-        ('external_ki', 'REAL DEFAULT 0.0'),
-        ('ki_density', 'REAL DEFAULT 1.0'),
-        ('ki_control', 'REAL DEFAULT 1.0'),
-        ('vessel_cap', 'INTEGER DEFAULT 100'),
-        ('talent', 'TEXT DEFAULT "None"'),
-        ('constitution', 'TEXT DEFAULT "None"'),
-        ('path', 'TEXT DEFAULT "None"'),
-        ('family_id', 'INTEGER DEFAULT 0'),
-        ('energy_current', 'REAL DEFAULT 100.0'),
-        ('energy_max', 'REAL DEFAULT 100.0'),
-        ('last_updated', 'INTEGER DEFAULT 0'),
-        ('jail_until', 'INTEGER DEFAULT 0'),
-        ('faint_count', 'INTEGER DEFAULT 0')
+        ('stage', "TEXT DEFAULT 'None'"),
+        ('mantra', "TEXT DEFAULT 'The path to immortality begins with a single step.'"),
+        ('last_meditate', "INTEGER DEFAULT 0"),
+        ('external_ki', "INTEGER DEFAULT 0"),
+        ('internal_ki', "INTEGER DEFAULT 0"),
+        ('path', "TEXT DEFAULT 'Neutral'"),
+        # Ensuring existing stats are converted to integers logic-wise in code, 
+        # but adding them here just in case.
+        ('copper', "INTEGER DEFAULT 0"),
+        ('silver', "INTEGER DEFAULT 0")
     ]
 
     cursor.execute(f"PRAGMA table_info(users)")
@@ -70,44 +60,42 @@ def init_db():
     conn.commit()
     conn.close()
 
-# --- GETTERS AND SETTERS ---
+# --- VAULT TOOLS ---
 
 def get_player_data(user_id):
-    """Fetches all data for a specific player."""
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-    result = cursor.fetchone()
+    res = cursor.fetchone()
     conn.close()
-    return result
+    return res
 
 def update_val(user_id, column, value):
-    """Updates a single specific value in the database."""
+    """Updates a value. Code will pass integers to ensure whole numbers."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
         cursor.execute(f"UPDATE users SET {column} = ? WHERE user_id = ?", (value, user_id))
         conn.commit()
     except Exception as e:
-        print(f"❌ Database Update Error ({column}): {e}")
+        print(f"❌ DB Error: {e}")
     finally:
         conn.close()
 
 def adjust_val(user_id, column, amount):
-    """Adds or subtracts a value (like Silver or Ki)."""
+    """Adjusts a value (Copper, Silver, Ki)."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
         cursor.execute(f"UPDATE users SET {column} = {column} + ? WHERE user_id = ?", (amount, user_id))
         conn.commit()
     except Exception as e:
-        print(f"❌ Database Adjustment Error ({column}): {e}")
+        print(f"❌ DB Error: {e}")
     finally:
         conn.close()
 
 def create_user(user_id, talent, constitution):
-    """Initializes a brand new user with their rolled Talent/Constitution."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('''
@@ -117,10 +105,7 @@ def create_user(user_id, talent, constitution):
     conn.commit()
     conn.close()
 
-# --- NEW: THE WIPE TOOL ---
-
 def delete_user(user_id):
-    """Completely wipes a user from the database."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))

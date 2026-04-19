@@ -1,26 +1,35 @@
 import discord
 from discord.ext import commands
 import random
-from utils.database import get_player_data, create_user, update_val
-from utils.mechanics import TALENTS, CONSTITUTIONS, calculate_ki_gain, calculate_vessel_limit, calculate_cp
+import time
+from utils.database import get_player_data, create_user, update_val, adjust_val
+from utils.mechanics import (
+    TALENTS, 
+    CONSTITUTIONS, 
+    calculate_cp, 
+    get_vessel_limit, 
+    calculate_energy_refill
+)
 
 class Foundation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def get_bar(self, current, max_val, length=10):
-        """Creates a visual progress bar."""
-        if max_val <= 0: return " [░░░░░░░░░░] "
-        filled = int((current / max_val) * length)
-        return f" `[{'█' * filled}{'░' * (length - filled)}]` "
+    def get_bar(self, current, max_val, color="🟩"):
+        """Creates a clean visual bar with whole numbers."""
+        if max_val <= 0: return "⬜" * 10
+        percentage = min(current / max_val, 1)
+        filled = int(percentage * 10)
+        bar = color * filled + "⬜" * (10 - filled)
+        return f"{bar} `{int(current)}/{int(max_val)}`"
 
     @commands.command(name="start")
     async def start(self, ctx):
         user_id = ctx.author.id
         if get_player_data(user_id):
-            return await ctx.send("❌ **Your path has already begun.** Use `!p` to see your progress.")
+            return await ctx.send("❌ **Your soul is already bound.** Use `!p` to see your journey.")
 
-        # Secretly roll Talent and Constitution
+        # Weighted rolls for rarities
         talent = random.choices(list(TALENTS.keys()), weights=[50, 25, 15, 7, 2, 1])[0]
         constitution = random.choices(list(CONSTITUTIONS.keys()), weights=[50, 25, 15, 7, 2, 1])[0]
 
@@ -28,11 +37,10 @@ class Foundation(commands.Cog):
         
         embed = discord.Embed(
             title="🏮 THE ARCHIVE OPENS",
-            description="You have been registered as a **Mortal**. Your journey begins in the dust, but your end... that is for you to decide.",
+            description="Your name has been inscribed in the annals of the Mortal World.\n\n*Use `!temper` to begin hardening your shell.*",
             color=0x2ecc71
         )
-        embed.add_field(name="📜 Current Goal", value="Use `!temper` to strengthen your mortal shell.")
-        embed.set_footer(text="Your hidden potential is dormant. Awaken it at 100% progress.")
+        embed.set_footer(text="Your potential is hidden until you reach the Warrior stage.")
         await ctx.send(embed=embed)
 
     @commands.command(name="profile", aliases=['p'])
@@ -44,73 +52,66 @@ class Foundation(commands.Cog):
             return await ctx.send(f"❌ **{target.display_name}** has not started their journey.")
 
         rank = data['rank']
+        stage = data['stage']
+        energy, _ = calculate_energy_refill(data['energy_current'], data['energy_max'], data['last_updated'])
         
-        # Calculate Current Stats
+        # Color based on Talent Grade for prestige
+        color = TALENTS.get(data['talent'], {}).get('color', 0x95a5a6) if rank != 'Mortal' else 0x7f8c8d
+        
+        title = f"📜 {target.display_name} | {rank}"
+        if rank != 'Mortal':
+            title = f"🏮 {target.display_name} | {rank} ({stage})"
+
+        embed = discord.Embed(title=title, color=color)
+        embed.description = f"*{data['mantra']}*\n`──────────────────────────────`"
+
+        # --- MORTAL LAYOUT ---
         if rank == 'Mortal':
-            embed = discord.Embed(title=f"📜 {target.display_name}'s Mortal Identity", color=0x95a5a6)
-            embed.add_field(name="🏮 Rank", value=f"`{rank}`", inline=True)
-            embed.add_field(name="💰 Wealth", value=f"🪙 `{data['copper']}` | ⚖️ `{data['silver']}`", inline=True)
-            
-            progress = data['progress']
-            embed.add_field(name=f"📈 Body Tempering ({progress}%)", value=self.get_bar(progress, 100, 15), inline=False)
-            embed.set_footer(text="The internal world is still locked to you.")
-        
+            embed.add_field(name="⚡ Energy", value=self.get_bar(energy, data['energy_max'], "🟧"), inline=False)
+            embed.add_field(name="📈 Tempering Progress", value=self.get_bar(data['progress'], 100, "⬜"), inline=False)
+            embed.add_field(name="💰 Wealth", value=f"🪙 `{data['copper']}` | 🥈 `{data['silver']}`", inline=False)
+            embed.set_footer(text="The path to Ki is currently blocked.")
+
+        # --- WARRIOR LAYOUT ---
         else:
-            # Warrior Profile (The Dashboard)
-            current_ki, _ = calculate_ki_gain(
-                data['internal_ki'], data['last_updated'], 
-                rank, data['talent'], data['vessel_cap']
-            )
-            vessel_max = calculate_vessel_limit(data['vessel_cap'], data['constitution'], rank)
-            cp = calculate_cp(rank, data['ki_density'], data['ki_control'], data['constitution'])
-
-            embed = discord.Embed(title=f"🏮 {target.display_name} | {rank}", color=0x3498db)
+            vessel = get_vessel_limit(rank, stage, data['constitution'])
+            cp = calculate_cp(rank, data['internal_ki'], data['external_ki'], data['constitution'])
             
-            # Zone 1: Identity
-            embed.add_field(name="🧬 Potential", value=f"**Talent:** `{data['talent']}`\n**Body:** `{data['constitution']}`", inline=True)
-            embed.add_field(name="🎭 Path", value=f"`{data['path']}`", inline=True)
-            embed.add_field(name="⚔️ Combat Power", value=f"`{cp:,}`", inline=True)
-
-            # Zone 2: Pillars
-            ki_bar = self.get_bar(current_ki, vessel_max, 12)
-            embed.add_field(name=f"🌀 Internal Ki ({int(current_ki)}/{vessel_max})", value=ki_bar, inline=False)
+            # Potential Section
+            t_grade = TALENTS[data['talent']]['grade']
+            c_grade = CONSTITUTIONS[data['constitution']]['grade']
             
-            pillar_stats = f"**Density:** `{data['ki_density']}` | **Control:** `{data['ki_control']}`"
-            embed.add_field(name="💎 Pillars of Power", value=pillar_stats, inline=False)
-
-            # Zone 3: Economy
-            embed.add_field(name="💰 Wealth", value=f"🪙 `{data['copper']}` | ⚖️ `{data['silver']}`", inline=True)
+            embed.add_field(name="🧬 Foundation", value=f"**Talent:** `{data['talent']}` {t_grade}\n**Body:** `{data['constitution']}` {c_grade}", inline=True)
+            embed.add_field(name="⚔️ Combat Power", value=f"📊 `{cp:,}`", inline=True)
+            
+            # The Twin Pillars
+            embed.add_field(name="✨ Internal Ki (Soul)", value=self.get_bar(data['internal_ki'], vessel, "🟦"), inline=False)
+            embed.add_field(name="💪 External Ki (Body)", value=f"`{data['external_ki']:,}`", inline=True)
+            embed.add_field(name="⚡ Energy", value=self.get_bar(energy, data['energy_max'], "🟧"), inline=True)
+            
+            # Economy
+            embed.add_field(name="💰 Wealth", value=f"🪙 `{data['copper']:,}` | 🥈 `{data['silver']:,}`", inline=False)
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="breakthrough")
-    async def breakthrough(self, ctx):
-        user_id = ctx.author.id
-        data = get_player_data(user_id)
-
-        if not data or data['rank'] != 'Mortal':
-            return await ctx.send("❌ This ceremony is only for Mortals at their limit.")
-
-        if data['progress'] < 100:
-            return await ctx.send(f"❌ Your body is not ready. Progress: `{data['progress']}/100%`")
-
-        # THE CEREMONY
-        new_rank = "Third-rate Warrior"
-        update_val(user_id, 'rank', new_rank)
-        update_val(user_id, 'progress', 0)
-        update_val(user_id, 'path', 'Neutral') # Initial path
-
-        embed = discord.Embed(
-            title="🌌 THE AWAKENING",
-            description=f"Congratulations, **{ctx.author.name}**. Your mortal chains have shattered.",
-            color=0xf1c40f
-        )
-        embed.add_field(name="🏮 New Rank", value=f"`{new_rank}`", inline=False)
-        embed.add_field(name="🧬 Talent Revealed", value=f"**{data['talent']}**", inline=True)
-        embed.add_field(name="💪 Constitution Revealed", value=f"**{data['constitution']}**", inline=True)
+    @commands.command(name="set_mantra", aliases=['mantra'])
+    async def set_mantra(self, ctx, *, text: str):
+        """Allows players to set their own profile bio."""
+        if len(text) > 60:
+            return await ctx.send("❌ Your mantra is too long! Keep it under 60 characters.")
         
-        embed.set_footer(text="The world of Ki is now open. Use !profile to see your new stats.")
-        await ctx.send(embed=embed)
+        update_val(ctx.author.id, 'mantra', text)
+        await ctx.send(f"✅ **Mantra Updated:** *\"{text}\"*")
+
+    @commands.command(name="status", aliases=['s'])
+    async def status(self, ctx):
+        """A quick, compact status view."""
+        data = get_player_data(ctx.author.id)
+        if not data: return
+        
+        energy, _ = calculate_energy_refill(data['energy_current'], data['energy_max'], data['last_updated'])
+        msg = f"👤 **{ctx.author.name}** | {data['rank']}\n⚡ Energy: `{energy}/100` | 🪙 `{data['copper']}`"
+        await ctx.send(msg)
 
 async def setup(bot):
     await bot.add_cog(Foundation(bot))
