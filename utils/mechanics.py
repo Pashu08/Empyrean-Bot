@@ -69,13 +69,13 @@ REQUIREMENTS = {
 
 # --- BREAKTHROUGH CHANCES ---
 CHANCES = {
-    'Third-rate Warrior': 90,
-    'Second-rate Warrior': 70,
-    'First-rate Warrior': 50,
-    'Peak Warrior': 30,
-    'Master': 15,
-    'Grandmaster': 5,
-    'Transcendent Realm': 1
+    'Third-rate Warrior': 100,
+    'Second-rate Warrior': 100,
+    'First-rate Warrior': 100,
+    'Peak Warrior': 100,
+    'Master': 100,
+    'Grandmaster': 100,
+    'Transcendent Realm': 100
 }
 
 # --- CALCULATIONS ---
